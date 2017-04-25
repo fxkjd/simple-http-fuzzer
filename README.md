@@ -2,7 +2,7 @@
 
 This is a python HTTP fuzzer implementation. 
 
-Simplefuzz input is a HTTP template (raw request) and a dictionary.
+Simplefuzzer input is a HTTP template (raw request) and a dictionary.
 The HTTP parameters that need to be fuzzed are marked with `{}`
 It sends HTTP requests for each input defined in the 
 raw HTTP and for each input in the dictionary.
@@ -22,8 +22,6 @@ Dependencies:
 - BaseHTTPServer
 - StringIO
 
-## Install
-
 ## Usage
 
 To get a list of basic options use:
@@ -38,7 +36,7 @@ This will create an `output` folder containing each request and its respective r
 
 ## Example
 
-The following HTTP request is an example of template:
+The following HTTP request is an example of a template:
 
     POST /checkIP HTTP/1.1
     Host: yourhostname
@@ -56,7 +54,8 @@ You can fuzz it by running:
 
     $ simplefuzzer.py -t HTTP_TEMPLATE -d DICTIONARY
 
-This will create the following folder structure:
+This will fuzz the `<ipAddress>` parameter with each entry of the dictionary,
+and it will create the following folder structure:
 
     output
     ├── req - HTTP requests
