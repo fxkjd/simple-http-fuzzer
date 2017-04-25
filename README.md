@@ -14,6 +14,16 @@ It Also logs an execution summary.
 
 Simple clone this repository.
 
+Dependencies:
+
+- argparse
+- requests
+- hashlib
+- BaseHTTPServer
+- StringIO
+
+## Install
+
 ## Usage
 
 To get a list of basic options use:
