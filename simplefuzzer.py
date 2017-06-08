@@ -80,7 +80,7 @@ def make_request(request, line, timeout):
     return req_res
 
 def fuzz(request, position, total, dict, output, fuzz_default, timeout):
-    print "\n[*] Fuzzing input {0}...".format(position + 1)
+    print "[*] Fuzzing input {0}...".format(position + 1)
 
     #replace inputs
     format = []
@@ -93,7 +93,7 @@ def fuzz(request, position, total, dict, output, fuzz_default, timeout):
     request = request.format(*tuple(format))
 
     #filename changes for each request
-    lines = file_len(dict)    
+    lines = file_len(dict)
     req_num = 0 
     log = ""
     errors = 0
@@ -114,16 +114,51 @@ def fuzz(request, position, total, dict, output, fuzz_default, timeout):
                 log = log + "{0}_{1} Invalid Request \"{2}\"\n".format(str(position), str(req_num), line)
             print "\rRequest {0} of {1} ({2} {3})".format(req_num, lines, errors, "error" if errors == 1 else "errors"),
             sys.stdout.flush()
+        print "\n"
     return log 
 
-def create_output(o):
+def handle_template(template, param, dictionary, output, fuzz_default, timeout):
+    #Count Number of template inputs
+    f = open(template, 'r').read()
+    print "[+] Load template {0}".format(template)
+    inputs = f.count("{}")
+    print "[+] Template inputs: {0}".format(inputs)
+
+    if param > inputs:
+        print "\n[-] Parameter set to {0} but template has only {1} inputs. Exiting...".format(param, inputs)
+        sys.exit(-1)
+        
+    #Fuzz each input
+    log_file = ""
+    for i in range(0, inputs):
+        if param < 0 or param - 1 == i:
+            log_file = log_file + fuzz(f, i, inputs, dictionary, output, fuzz_default, timeout)
+        else:
+            print "\n[*] Ignoring input {0}".format(i+1),
+
+    filename = output + "/results.log"
+    save_string(filename, log_file)
+
+def handle_template_dir(folder, param, dictionary, output, fuzz_default, timeout):
+    print "[+] Template folder: {0}".format(folder)
+    files = os.listdir(folder)
+    print "[+] Number of templates to fuzz: {0}".format(len(files))
+    #List files in the directory and use them as template
+    for template in files:
+        new_output = output + '/' + template 
+        create_output(new_output)
+        template = folder + '/' + template
+        handle_template(template, param, dictionary, new_output, fuzz_default, timeout)
+
+def create_output(o, req_res=True):
     #Ensure output directory does not exists
     if not os.path.exists(o):
-        req_o = o + "/req"
-        res_o = o + "/res"
         os.makedirs(o)
-        os.makedirs(req_o)
-        os.makedirs(res_o)
+        if req_res:
+            req_o = o + "/req"
+            res_o = o + "/res"
+            os.makedirs(req_o)
+            os.makedirs(res_o)
     else:
         print "[-] {0} directory already exists, exiting...".format(o)
         sys.exit(-1)
@@ -135,42 +170,28 @@ def main():
     parser.add_argument('-d', action='store', dest='dictionary', help='Fuzzing dictionary', required=True)
     parser.add_argument('-o', action='store', dest='output', help='Output directory') 
     parser.add_argument('--param', action='store', dest='parameter', help='Fuzz just one parameter (if not set fuzz all of them)') 
-    parser.add_argument('--timeout', action='store', dest='timeout', help='Time to stop waiting for a response in seconds (default to 0.5 seconds)') 
+    parser.add_argument('--timeout', action='store', dest='timeout', help='Time to stop waiting for a response in seconds (default to 0.1 seconds)') 
     parser.add_argument('--default', action='store', dest='default', help="Value used for the parameters that are not being fuzzed (if not set defaults to 'wubalubadub')") 
     args = parser.parse_args()
-    t = args.template
-    d = args.dictionary
-    o = args.output
+    template = args.template
+    dictionary = args.dictionary
+    output = args.output
+    is_template_folder = os.path.isdir(template)
     param = int(args.parameter) if args.parameter != None else -1
-    timeout = float(args.timeout) if args.timeout != None else 0.5
+    timeout = float(args.timeout) if args.timeout != None else 0.1
     fuzz_default = args.default if args.default != None else "wubalubadu"
 
-    if o != None:
-        create_output(o)
+    if output != None:
+        create_output(output, req_res=not is_template_folder)
     else:
         print "[+] Output not defined, defaults to './output/'"
         o = "output"
-        create_output(o)
+        create_output(output, req_res=not is_template_folder)
 
-    #Count Number of template inputs
-    f = open(t, 'r').read()
-    inputs = f.count("{}")
-    print "[+] Template inputs: {0}".format(inputs),
-
-    if param > inputs:
-        print "\n[-] Parameter set to {0} but template has only {1} inputs. Exiting...".format(param, inputs)
-        sys.exit(-1)
-        
-    #Fuzz each input
-    log_file = ""
-    for i in range(0, inputs):
-        if param < 0 or param - 1 == i:
-            log_file = log_file + fuzz(f, i, inputs, d, o, fuzz_default, timeout)
-        else:
-            print "\n[*] Ignoring input {0}".format(i+1),
-
-    filename = o + "/results.log"
-    save_string(filename, log_file)
+    if is_template_folder:
+       handle_template_dir(template, param, dictionary, output, fuzz_default, timeout) 
+    else:
+        handle_template(template, param, dictionary, output, fuzz_default, timeout)
     
 if __name__ == "__main__":
     main()
