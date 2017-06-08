@@ -58,7 +58,7 @@ def new_log_line(position, req_num, results):
         length = "-1" 
     return "{0}_{1} status code: {2} response length: {3} - {4}\n".format(str(position), str(req_num), status_code, length, results["hash"])
 
-def make_request(request, line):
+def make_request(request, line, timeout):
     req_res = {}
     request = request.replace("{}", line)
     req_res["hash"] = hashlib.md5(request).hexdigest()
@@ -69,7 +69,7 @@ def make_request(request, line):
     headers = r.headers 
     data = r.body 
     try:
-        response = requests.post(url, data=data, headers=headers, stream=True)
+        response = requests.post(url, data=data, headers=headers, timeout=timeout, stream=True)
         string_response = response_to_string(response)
         req_res["response"] = response 
         req_res["string_response"] = string_response 
@@ -79,7 +79,7 @@ def make_request(request, line):
 
     return req_res
 
-def fuzz(request, position, total, dict, output, fuzz_default):
+def fuzz(request, position, total, dict, output, fuzz_default, timeout):
     print "\n[*] Fuzzing input {0}...".format(position + 1)
 
     #replace inputs
@@ -102,7 +102,7 @@ def fuzz(request, position, total, dict, output, fuzz_default):
         for line in f:
             line = line.strip()
             req_num = req_num + 1
-            results = make_request(request, line)
+            results = make_request(request, line, timeout)
             if results != None:
                 filename_res = "{0}/res/{1}_{2}_{3}".format(output, str(position), str(req_num), results["hash"])
                 filename_req = "{0}/req/{1}_{2}_{3}".format(output, str(position), str(req_num), results["hash"])
@@ -133,14 +133,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-t', action='store', dest='template', help='HTTP request template', required=True) 
     parser.add_argument('-d', action='store', dest='dictionary', help='Fuzzing dictionary', required=True)
-    parser.add_argument('--out', action='store', dest='output', help='Output directory') 
+    parser.add_argument('-o', action='store', dest='output', help='Output directory') 
     parser.add_argument('--param', action='store', dest='parameter', help='Fuzz just one parameter (if not set fuzz all of them)') 
+    parser.add_argument('--timeout', action='store', dest='timeout', help='Time to stop waiting for a response in seconds (default to 0.5 seconds)') 
     parser.add_argument('--default', action='store', dest='default', help="Value used for the parameters that are not being fuzzed (if not set defaults to 'wubalubadub')") 
     args = parser.parse_args()
     t = args.template
     d = args.dictionary
     o = args.output
     param = int(args.parameter) if args.parameter != None else -1
+    timeout = float(args.timeout) if args.timeout != None else 0.5
     fuzz_default = args.default if args.default != None else "wubalubadu"
 
     if o != None:
@@ -163,7 +165,7 @@ def main():
     log_file = ""
     for i in range(0, inputs):
         if param < 0 or param - 1 == i:
-            log_file = log_file + fuzz(f, i, inputs, d, o, fuzz_default)
+            log_file = log_file + fuzz(f, i, inputs, d, o, fuzz_default, timeout)
         else:
             print "\n[*] Ignoring input {0}".format(i+1),
 
