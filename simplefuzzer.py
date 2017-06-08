@@ -45,7 +45,7 @@ def save_string(filename, content):
     with open(filename, "w") as text_file:
         text_file.write("%s" % content)
 
-def new_log_line(position, req_num, results):
+def new_log_line(position, req_num, dict_name, payload, results):
     status_code = ""
     try:
         status_code = results["response"].status_code
@@ -56,7 +56,7 @@ def new_log_line(position, req_num, results):
         length = results["response"].headers["Content-Length"]
     except:
         length = "-1" 
-    return "{0}_{1} status code: {2} response length: {3} - {4}\n".format(str(position), str(req_num), status_code, length, results["hash"])
+    return "{0}_{1} {2} status code: {3} - response length: {4} - {5} - {6}\n".format(str(position), str(req_num), dict_name, status_code, length, payload, results["hash"])
 
 def make_request(request, line, timeout):
     req_res = {}
@@ -93,6 +93,8 @@ def fuzz(request, position, total, dict, output, fuzz_default, timeout):
     request = request.format(*tuple(format))
 
     #filename changes for each request
+    dict_name = dict.split("/")[-1]
+    dict_path = "{0}/".format(dict_name) if len(dict.split("/")) > 1 else ""
     lines = file_len(dict)
     req_num = 0 
     log = ""
@@ -104,9 +106,9 @@ def fuzz(request, position, total, dict, output, fuzz_default, timeout):
             req_num = req_num + 1
             results = make_request(request, line, timeout)
             if results != None:
-                filename_res = "{0}/res/{1}_{2}_{3}".format(output, str(position), str(req_num), results["hash"])
-                filename_req = "{0}/req/{1}_{2}_{3}".format(output, str(position), str(req_num), results["hash"])
-                log = log + new_log_line(position, req_num, results)
+                filename_res = "{0}/res/{1}{2}_{3}_{4}".format(output, dict_path, str(position), str(req_num), results["hash"])
+                filename_req = "{0}/req/{1}{2}_{3}_{4}".format(output, dict_path, str(position), str(req_num), results["hash"])
+                log = log + new_log_line(position, req_num, dict_name, line, results)
                 save_string(filename_req, results["request"])
                 save_string(filename_res, results["string_response"])
             else:
@@ -116,6 +118,22 @@ def fuzz(request, position, total, dict, output, fuzz_default, timeout):
             sys.stdout.flush()
         print "\n"
     return log 
+
+def fuzz_with_dictionary(f, i, inputs, dictionary_path, output, fuzz_default, timeout):
+    log = ""
+    files = os.listdir(dictionary_path)
+    for dictionary in files:
+        print "[+] Dictionary: {0}".format(dictionary)
+        dict_path = dictionary_path + "/" + dictionary
+        dict_req_path = output + "/req/" + dictionary 
+        dict_res_path = output + "/res/" + dictionary 
+        if not os.path.exists(dict_req_path):
+            os.makedirs(dict_req_path)
+        if not os.path.exists(dict_res_path):
+            os.makedirs(dict_res_path)
+        new_log = fuzz(f, i, inputs, dict_path, output, fuzz_default, timeout)
+        log = log + new_log
+    return log
 
 def handle_template(template, param, dictionary, output, fuzz_default, timeout):
     #Count Number of template inputs
@@ -127,12 +145,18 @@ def handle_template(template, param, dictionary, output, fuzz_default, timeout):
     if param > inputs:
         print "\n[-] Parameter set to {0} but template has only {1} inputs. Exiting...".format(param, inputs)
         sys.exit(-1)
-        
+
     #Fuzz each input
     log_file = ""
     for i in range(0, inputs):
         if param < 0 or param - 1 == i:
-            log_file = log_file + fuzz(f, i, inputs, dictionary, output, fuzz_default, timeout)
+            is_dictionary_folder = os.path.isdir(dictionary)
+            if is_dictionary_folder:
+                new_line = fuzz_with_dictionary(f, i, inputs, dictionary, output, fuzz_default, timeout)
+                log_file = log_file + new_line 
+            else:
+                new_line = fuzz(f, i, inputs, dictionary, output, fuzz_default, timeout)
+                log_file = log_file + new_line 
         else:
             print "\n[*] Ignoring input {0}".format(i+1),
 
