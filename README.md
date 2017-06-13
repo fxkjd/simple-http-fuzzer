@@ -28,11 +28,15 @@ To get a list of basic options use:
 
     $ simplefuzzer.py -h
 
-To launch it, simply run:
+To launch the fuzzer, simply run:
 
-    $ simplefuzzer.py -t HTTP_TEMPLATE -d DICTIONARY
+    $ simplefuzzer.py fuzzer -t HTTP_TEMPLATE -d DICTIONARY
 
 This will create an `output` folder containing each request and its respective response.
+
+Simplefuzzer also allows to send a HTTP raw request:
+
+    $ simplefuzzer.py request -r HTTP_RAW_REQUEST
 
 ## Example
 
@@ -52,19 +56,54 @@ The following HTTP request is an example of a template:
 
 You can fuzz it by running:
 
-    $ simplefuzzer.py -t HTTP_TEMPLATE -d DICTIONARY
+    $ simplefuzzer.py fuzzer -t HTTP_TEMPLATE -d DICTIONARY
 
 This will fuzz the `<ipAddress>` parameter with each entry of the dictionary,
 and it will create the following folder structure:
 
     output
-    ├── req - HTTP requests
-    │   ├── param0_dictionaryValue0_md5requesthash
-    │   ├── ... 
-    │   └── param0_dictionaryValueN_md5requesthash
-    ├── res - HTTP responses
-    │   ├── param0_dictionaryValue0_md5requesthash
-    │   ├── ...
-    │   └── param0_dictionaryValue0_md5requesthash
-    └── results.log - Summary
+    └── getagentinfowb_pre.txt
+        ├── req - HTTP requests
+        │   ├── param0_dictionaryValue0_md5requesthash
+        │   ├── ... 
+        │   └── param0_dictionaryValueN_md5requesthash
+        ├── res - HTTP responses
+        │   ├── param0_dictionaryValue0_md5requesthash
+        │   ├── ...
+        │   └── paramN_dictionaryValueN_md5requesthash
+        └── results.log - Summary
+
+Additionally you can pass a folder as `DICTIONARY` value. This will fuzz `<ipAddress>` parameter 
+with each dictionary of the `DICTIONARY` folder.
+The resulting folder structure will be the following:
+
+    output
+    └── getagentinfowb_pre.txt
+        ├── req - HTTP requests
+        │   ├── dictionary_0 
+        │   │   ├── param0_dictionaryValue0_md5requesthash
+        │   │   ├── ... 
+        │   │   └── paramN_dictionaryValueN_md5requesthash
+        │   ├── dictionary_1
+        │   │   ├── param0_dictionaryValue0_md5requesthash
+        │   │   ├── ... 
+        │   │   └── paramN_dictionaryValueN_md5requesthash
+        │   └── dictionary_2
+        │       ├── param0_dictionaryValue0_md5requesthash
+        │       ├── ... 
+        │       └── paramN_dictionaryValueN_md5requesthash
+        ├── res
+        │   ├── dictionary_0 
+        │   │   ├── param0_dictionaryValue0_md5requesthash
+        │   │   ├── ... 
+        │   │   └── paramN_dictionaryValueN_md5requesthash
+        │   ├── dictionary_1
+        │   │   ├── param0_dictionaryValue0_md5requesthash
+        │   │   ├── ... 
+        │   │   └── paramN_dictionaryValueN_md5requesthash
+        │   └── dictionary_2
+        │       ├── param0_dictionaryValue0_md5requesthash
+        │       ├── ... 
+        │       └── paramN_dictionaryValueN_md5requesthash
+        └── results.log
 
