@@ -82,7 +82,7 @@ def make_request(request, line, timeout):
 
     return req_res
 
-def fuzz(request, position, total, dict, output, fuzz_default, timeout):
+def fuzz(request, position, total, dict, dict_output, output, fuzz_default, timeout):
     print '[*] Fuzzing input {0}...'.format(position + 1)
 
     #replace inputs
@@ -97,7 +97,6 @@ def fuzz(request, position, total, dict, output, fuzz_default, timeout):
 
     #filename changes for each request
     dict_name = dict.split('/')[-1]
-    dict_path = '{0}/'.format(dict_name) if len(dict.split('/')) > 1 else ''
     lines = file_len(dict)
     req_num = 0 
     log = ''
@@ -109,8 +108,8 @@ def fuzz(request, position, total, dict, output, fuzz_default, timeout):
             req_num = req_num + 1
             results = make_request(request, line, timeout)
             if not results['error']:
-                filename_res = '{0}/res/{1}{2}_{3}_{4}'.format(output, dict_path, str(position), str(req_num), results['hash'])
-                filename_req = '{0}/req/{1}{2}_{3}_{4}'.format(output, dict_path, str(position), str(req_num), results['hash'])
+                filename_res = '{0}/res/{1}{2}_{3}_{4}'.format(output, dict_output, str(position), str(req_num), results['hash'])
+                filename_req = '{0}/req/{1}{2}_{3}_{4}'.format(output, dict_output, str(position), str(req_num), results['hash'])
                 log = log + new_log_line(position, req_num, dict_name, line, results)
                 save_string(filename_req, results['request'])
                 save_string(filename_res, results['string_response'])
@@ -134,7 +133,8 @@ def fuzz_with_dictionary(f, i, inputs, dictionary_path, output, fuzz_default, ti
             os.makedirs(dict_req_path)
         if not os.path.exists(dict_res_path):
             os.makedirs(dict_res_path)
-        new_log = fuzz(f, i, inputs, dict_path, output, fuzz_default, timeout)
+        dict_name = '{0}/'.format(dict_path.split('/')[-1]) 
+        new_log = fuzz(f, i, inputs, dict_path, dict_name, output, fuzz_default, timeout)
         log = log + new_log
     return log
 
@@ -158,7 +158,7 @@ def handle_template(template, param, dictionary, output, fuzz_default, timeout):
                 new_line = fuzz_with_dictionary(f, i, inputs, dictionary, output, fuzz_default, timeout)
                 log_file = log_file + new_line 
             else:
-                new_line = fuzz(f, i, inputs, dictionary, output, fuzz_default, timeout)
+                new_line = fuzz(f, i, inputs, dictionary, '', output, fuzz_default, timeout)
                 log_file = log_file + new_line 
         else:
             print '\n[*] Ignoring input {0}'.format(i+1),
