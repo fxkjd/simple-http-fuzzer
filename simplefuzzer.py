@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+#TODO refactor code
 import argparse, os, requests, sys, hashlib
 from BaseHTTPServer import BaseHTTPRequestHandler
 from StringIO import StringIO
@@ -11,7 +12,7 @@ class HTTPRequest(BaseHTTPRequestHandler):
         self.raw_requestline = self.rfile.readline()
         self.error_code = self.error_message = None
         self.parse_request()
-        self.body = ""
+        self.body = ''
         for line in self.rfile:
             self.body = self.body + line 
 
@@ -26,61 +27,63 @@ def file_len(fname):
     return i + 1
 
 def response_to_string(response):
-    string = ""
+    string = ''
     #HTTP 
     try:
-        string = string + "HTTP/1.1 {0} {1}\n".format(response.status_code, response.reason)
+        string = string + 'HTTP/1.1 {0} {1}\n'.format(response.status_code, response.reason)
     except:
-        string = string + "HTTP/1.1\n"
+        string = string + 'HTTP/1.1\n'
     #HEADERS
     for header, value in response.headers.items():
-        string = string + "{0}: {1}\n".format(header, value)
+        string = string + '{0}: {1}\n'.format(header, value)
     #Content
-    string = string + "\n"
+    string = string + '\n'
     for chunk in response.iter_content(chunk_size=128):
         string = string + chunk
     return string
 
 def save_string(filename, content):
-    with open(filename, "w") as text_file:
-        text_file.write("%s" % content)
+    with open(filename, 'w') as text_file:
+        text_file.write('%s' % content)
 
 def new_log_line(position, req_num, dict_name, payload, results):
-    status_code = ""
+    status_code = ''
     try:
-        status_code = results["response"].status_code
+        status_code = results['response'].status_code
     except:
-        status_code = "No status code" 
-    length = ""
+        status_code = 'No status code' 
+    length = ''
     try:
-        length = results["response"].headers["Content-Length"]
+        length = results['response'].headers['Content-Length']
     except:
-        length = "-1" 
-    return "{0}_{1} {2} status code: {3} - response length: {4} - {5} - {6}\n".format(str(position), str(req_num), dict_name, status_code, length, payload, results["hash"])
+        length = '-1' 
+    return '[{0}_{1} {2}] status code: {3} - response length: {4} - {5} - {6}\n'.format(str(position), str(req_num), dict_name, status_code, length, payload, results['hash'])
 
 def make_request(request, line, timeout):
     req_res = {}
-    request = request.replace("{}", line)
-    req_res["hash"] = hashlib.md5(request).hexdigest()
+    request = request.replace('{}', line)
+    req_res['hash'] = hashlib.md5(request).hexdigest()
     #parse raw request 
     r = HTTPRequest(request)
     url = r.raw_requestline.split()[1]
-    r.headers["Content-Length"] = str(len(r.body))    
+    r.headers['Content-Length'] = str(len(r.body))    
     headers = r.headers 
     data = r.body 
     try:
         response = requests.post(url, data=data, headers=headers, timeout=timeout, stream=True)
         string_response = response_to_string(response)
-        req_res["response"] = response 
-        req_res["string_response"] = string_response 
-        req_res["request"] = request
-    except:
-        req_res = None
+        req_res['response'] = response 
+        req_res['string_response'] = string_response 
+        req_res['request'] = request
+        req_res['error'] = False
+    except Exception, e:
+        req_res['error_message'] = e
+        req_res['error'] = True
 
     return req_res
 
 def fuzz(request, position, total, dict, output, fuzz_default, timeout):
-    print "[*] Fuzzing input {0}...".format(position + 1)
+    print '[*] Fuzzing input {0}...'.format(position + 1)
 
     #replace inputs
     format = []
@@ -88,16 +91,16 @@ def fuzz(request, position, total, dict, output, fuzz_default, timeout):
         if i != position:
             format.append(fuzz_default)
         else:          
-            format.append("{}")                  
+            format.append('{}')                  
 
     request = request.format(*tuple(format))
 
     #filename changes for each request
-    dict_name = dict.split("/")[-1]
-    dict_path = "{0}/".format(dict_name) if len(dict.split("/")) > 1 else ""
+    dict_name = dict.split('/')[-1]
+    dict_path = '{0}/'.format(dict_name) if len(dict.split('/')) > 1 else ''
     lines = file_len(dict)
     req_num = 0 
-    log = ""
+    log = ''
     errors = 0
     #fuzz with the dictionary
     with open(dict, 'r') as f:
@@ -105,28 +108,28 @@ def fuzz(request, position, total, dict, output, fuzz_default, timeout):
             line = line.strip()
             req_num = req_num + 1
             results = make_request(request, line, timeout)
-            if results != None:
-                filename_res = "{0}/res/{1}{2}_{3}_{4}".format(output, dict_path, str(position), str(req_num), results["hash"])
-                filename_req = "{0}/req/{1}{2}_{3}_{4}".format(output, dict_path, str(position), str(req_num), results["hash"])
+            if not results['error']:
+                filename_res = '{0}/res/{1}{2}_{3}_{4}'.format(output, dict_path, str(position), str(req_num), results['hash'])
+                filename_req = '{0}/req/{1}{2}_{3}_{4}'.format(output, dict_path, str(position), str(req_num), results['hash'])
                 log = log + new_log_line(position, req_num, dict_name, line, results)
-                save_string(filename_req, results["request"])
-                save_string(filename_res, results["string_response"])
+                save_string(filename_req, results['request'])
+                save_string(filename_res, results['string_response'])
             else:
                 errors = errors + 1
-                log = log + "{0}_{1} Invalid Request \"{2}\"\n".format(str(position), str(req_num), line)
-            print "\rRequest {0} of {1} ({2} {3})".format(req_num, lines, errors, "error" if errors == 1 else "errors"),
+                log = log + '[{0}_{1} {2}] Error: {3} - \"{4}\"\n'.format(str(position), str(req_num), dict_name,results['error_message'], line)
+            print '\rRequest {0} of {1} ({2} {3})'.format(req_num, lines, errors, 'error' if errors == 1 else 'errors'),
             sys.stdout.flush()
-        print "\n"
+        print '\n'
     return log 
 
 def fuzz_with_dictionary(f, i, inputs, dictionary_path, output, fuzz_default, timeout):
-    log = ""
+    log = ''
     files = os.listdir(dictionary_path)
     for dictionary in files:
-        print "[+] Dictionary: {0}".format(dictionary)
-        dict_path = dictionary_path + "/" + dictionary
-        dict_req_path = output + "/req/" + dictionary 
-        dict_res_path = output + "/res/" + dictionary 
+        print '[+] Dictionary: {0}'.format(dictionary)
+        dict_path = dictionary_path + '/' + dictionary
+        dict_req_path = output + '/req/' + dictionary 
+        dict_res_path = output + '/res/' + dictionary 
         if not os.path.exists(dict_req_path):
             os.makedirs(dict_req_path)
         if not os.path.exists(dict_res_path):
@@ -138,16 +141,16 @@ def fuzz_with_dictionary(f, i, inputs, dictionary_path, output, fuzz_default, ti
 def handle_template(template, param, dictionary, output, fuzz_default, timeout):
     #Count Number of template inputs
     f = open(template, 'r').read()
-    print "[+] Load template {0}".format(template)
-    inputs = f.count("{}")
-    print "[+] Template inputs: {0}".format(inputs)
+    print '[+] Load template {0}'.format(template)
+    inputs = f.count('{}')
+    print '[+] Template inputs: {0}'.format(inputs)
 
     if param > inputs:
-        print "\n[-] Parameter set to {0} but template has only {1} inputs. Exiting...".format(param, inputs)
+        print '\n[-] Parameter set to {0} but template has only {1} inputs. Exiting...'.format(param, inputs)
         sys.exit(-1)
 
     #Fuzz each input
-    log_file = ""
+    log_file = ''
     for i in range(0, inputs):
         if param < 0 or param - 1 == i:
             is_dictionary_folder = os.path.isdir(dictionary)
@@ -158,15 +161,15 @@ def handle_template(template, param, dictionary, output, fuzz_default, timeout):
                 new_line = fuzz(f, i, inputs, dictionary, output, fuzz_default, timeout)
                 log_file = log_file + new_line 
         else:
-            print "\n[*] Ignoring input {0}".format(i+1),
+            print '\n[*] Ignoring input {0}'.format(i+1),
 
-    filename = output + "/results.log"
+    filename = output + '/results.log'
     save_string(filename, log_file)
 
 def handle_template_dir(folder, param, dictionary, output, fuzz_default, timeout):
-    print "[+] Template folder: {0}".format(folder)
+    print '[+] Template folder: {0}'.format(folder)
     files = os.listdir(folder)
-    print "[+] Number of templates to fuzz: {0}".format(len(files))
+    print '[+] Number of templates to fuzz: {0}'.format(len(files))
     #List files in the directory and use them as template
     for template in files:
         new_output = output + '/' + template 
@@ -179,43 +182,79 @@ def create_output(o, req_res=True):
     if not os.path.exists(o):
         os.makedirs(o)
         if req_res:
-            req_o = o + "/req"
-            res_o = o + "/res"
+            req_o = o + '/req'
+            res_o = o + '/res'
             os.makedirs(req_o)
             os.makedirs(res_o)
     else:
-        print "[-] {0} directory already exists, exiting...".format(o)
+        print '[-] {0} directory already exists, exiting...'.format(o)
         sys.exit(-1)
 
-def main():
-    #Parse arguments 
-    parser = argparse.ArgumentParser()
+def handle_fuzzer(args):
+    #parse arguments
+    dictionary = args.dictionary
+    output = args.output
+    is_template_folder = os.path.isdir(template)
+    param = int(args.parameter) if args.parameter != None else -1
+    timeout = float(args.timeout) if args.timeout != None else 0.5
+    fuzz_default = args.default if args.default != None else 'wubalubadu'
+
+    if output != None:
+        create_output(output, req_res=not is_template_folder)
+    else:
+        print '[+] Output not defined, defaults to \'./output/\''
+        o = 'output'
+        create_output(output, req_res=not is_template_folder)
+
+    #perform fuzzing
+    if is_template_folder:
+       handle_template_dir(template, param, dictionary, output, fuzz_default, timeout) 
+    else:
+        handle_template(template, param, dictionary, output, fuzz_default, timeout)
+
+def handle_request(args):
+    #parse arguments
+    template = args.request
+    timeout = float(args.timeout) if args.timeout != None else 0.5
+
+    #perform requests
+    request = open(template, 'r').read()
+    results = make_request(request, '', timeout)
+
+    if not results['error']:
+        print results['string_response']
+    else:
+        print results['error_message']
+
+def add_fuzzer_params(subparser):
+    parser = subparser.add_parser('fuzzer', help='Fuzz a template given a dictionary')
     parser.add_argument('-t', action='store', dest='template', help='HTTP request template', required=True) 
     parser.add_argument('-d', action='store', dest='dictionary', help='Fuzzing dictionary', required=True)
     parser.add_argument('-o', action='store', dest='output', help='Output directory') 
     parser.add_argument('--param', action='store', dest='parameter', help='Fuzz just one parameter (if not set fuzz all of them)') 
     parser.add_argument('--timeout', action='store', dest='timeout', help='Time to stop waiting for a response in seconds (default to 0.1 seconds)') 
-    parser.add_argument('--default', action='store', dest='default', help="Value used for the parameters that are not being fuzzed (if not set defaults to 'wubalubadub')") 
-    args = parser.parse_args()
-    template = args.template
-    dictionary = args.dictionary
-    output = args.output
-    is_template_folder = os.path.isdir(template)
-    param = int(args.parameter) if args.parameter != None else -1
-    timeout = float(args.timeout) if args.timeout != None else 0.1
-    fuzz_default = args.default if args.default != None else "wubalubadu"
+    parser.add_argument('--default', action='store', dest='default', help='Value used for the parameters that are not being fuzzed (if not set defaults to \'wubalubadub\')') 
+ 
+def add_request_params(subparser):
+    parser = subparser.add_parser('request', help='Send a raw HTTP request')
+    parser.add_argument('-r', action='store', dest='request', help='HTTP request', required=True) 
+    parser.add_argument('--timeout', action='store', dest='timeout', help='Time to stop waiting for a response in seconds (default to 0.1 seconds)') 
 
-    if output != None:
-        create_output(output, req_res=not is_template_folder)
-    else:
-        print "[+] Output not defined, defaults to './output/'"
-        o = "output"
-        create_output(output, req_res=not is_template_folder)
-
-    if is_template_folder:
-       handle_template_dir(template, param, dictionary, output, fuzz_default, timeout) 
-    else:
-        handle_template(template, param, dictionary, output, fuzz_default, timeout)
+def main():
+    parser = argparse.ArgumentParser(description='A simple HTTP fuzzer')
+    subparsers = parser.add_subparsers(help='Program mode: request/fuzzer', dest='mode')
     
-if __name__ == "__main__":
+    add_request_params(subparsers)
+    add_fuzzer_params(subparsers)
+
+    args = parser.parse_args()
+
+    if args.mode == 'request':
+        handle_request(args)
+    elif args.mode == 'fuzzer':
+        handle_fuzzer(args)
+    else:
+        parser.print_usage()
+
+if __name__ == '__main__':
     main()
