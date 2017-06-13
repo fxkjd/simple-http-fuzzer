@@ -192,6 +192,7 @@ def create_output(o, req_res=True):
 
 def handle_fuzzer(args):
     #parse arguments
+    template = args.template
     dictionary = args.dictionary
     output = args.output
     is_template_folder = os.path.isdir(template)
