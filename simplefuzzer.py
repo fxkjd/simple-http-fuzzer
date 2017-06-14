@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #TODO refactor code
-import argparse, os, requests, sys, hashlib
+import argparse, os, requests, sys, hashlib, shutil
 from BaseHTTPServer import BaseHTTPRequestHandler
 from StringIO import StringIO
 
@@ -188,7 +188,13 @@ def create_output(o, req_res=True):
             os.makedirs(res_o)
     else:
         print '[-] {0} directory already exists, exiting...'.format(o)
-        sys.exit(-1)
+        print 'Do you want to delete it? [y/N]',
+        choice = raw_input().lower()
+        if choice == 'y':
+            shutil.rmtree(o)
+            create_output(o, req_res)
+        else:
+            sys.exit(-1)
 
 def handle_fuzzer(args):
     #parse arguments
