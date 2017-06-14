@@ -204,7 +204,7 @@ def handle_fuzzer(args):
         create_output(output, req_res=not is_template_folder)
     else:
         print '[+] Output not defined, defaults to \'./output/\''
-        o = 'output'
+        output = 'output'
         create_output(output, req_res=not is_template_folder)
 
     #perform fuzzing
