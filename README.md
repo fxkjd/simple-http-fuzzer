@@ -84,11 +84,8 @@ The resulting folder structure will be the following:
         │   │   ├── param0_dictionaryValue0_md5requesthash
         │   │   ├── ... 
         │   │   └── paramN_dictionaryValueN_md5requesthash
-        │   ├── dictionary_1
-        │   │   ├── param0_dictionaryValue0_md5requesthash
-        │   │   ├── ... 
-        │   │   └── paramN_dictionaryValueN_md5requesthash
-        │   └── dictionary_2
+        │   ├── ...
+        │   └── dictionary_N
         │       ├── param0_dictionaryValue0_md5requesthash
         │       ├── ... 
         │       └── paramN_dictionaryValueN_md5requesthash
@@ -97,11 +94,8 @@ The resulting folder structure will be the following:
         │   │   ├── param0_dictionaryValue0_md5requesthash
         │   │   ├── ... 
         │   │   └── paramN_dictionaryValueN_md5requesthash
-        │   ├── dictionary_1
-        │   │   ├── param0_dictionaryValue0_md5requesthash
-        │   │   ├── ... 
-        │   │   └── paramN_dictionaryValueN_md5requesthash
-        │   └── dictionary_2
+        │   ├── ...
+        │   └── dictionary_N
         │       ├── param0_dictionaryValue0_md5requesthash
         │       ├── ... 
         │       └── paramN_dictionaryValueN_md5requesthash
