@@ -5,7 +5,8 @@ import argparse, os, requests, sys, hashlib, shutil, re
 from BaseHTTPServer import BaseHTTPRequestHandler
 from StringIO import StringIO
 
-MATCH_REGEX = '\{\{\w*\}\}'
+#regex for matching anything between '{{' and '}}'
+MATCH_REGEX = '\{\{[^(\}\})]*\}\}'
 
 #class for parsing HTTP raw request
 class HTTPRequest(BaseHTTPRequestHandler):
