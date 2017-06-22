@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
 #TODO refactor code
-import argparse, os, requests, sys, hashlib, shutil
+import argparse, os, requests, sys, hashlib, shutil, re
 from BaseHTTPServer import BaseHTTPRequestHandler
 from StringIO import StringIO
+
+MATCH_REGEX = '\{\{\w*\}\}'
 
 #class for parsing HTTP raw request
 class HTTPRequest(BaseHTTPRequestHandler):
@@ -61,7 +63,7 @@ def new_log_line(position, req_num, dict_name, payload, results):
 
 def make_request(request, line, timeout):
     req_res = {}
-    request = request.replace('{}', line)
+    request = request.replace('{{}}', line)
     req_res['hash'] = hashlib.md5(request).hexdigest()
     #parse raw request 
     r = HTTPRequest(request)
@@ -82,18 +84,23 @@ def make_request(request, line, timeout):
 
     return req_res
 
-def fuzz(request, position, total, dict, dict_output, output, fuzz_default, timeout):
+def replace_inputs(request, position, fuzz_default):
+    matches = re.findall(MATCH_REGEX, request)
+    for i, match in enumerate(matches):
+        if i != position:
+            #replace by match content - remove {{ and }} or set fuzz_default if is empty
+            content = match[2:-2] if match[2:-2] != '' else fuzz_default
+            request = request.replace(match, content, 1)
+        else:
+            #replace by {{}}
+            request = request.replace(match, '{{}}', 1) 
+    return request
+
+def fuzz(request, position, dict, dict_output, output, fuzz_default, timeout):
     print '[*] Fuzzing input {0}...'.format(position + 1)
 
     #replace inputs
-    format = []
-    for i in range(0, total):
-        if i != position:
-            format.append(fuzz_default)
-        else:          
-            format.append('{}')                  
-
-    request = request.format(*tuple(format))
+    request = replace_inputs(request, position, fuzz_default)    
 
     #filename changes for each request
     dict_name = dict.split('/')[-1]
@@ -121,7 +128,7 @@ def fuzz(request, position, total, dict, dict_output, output, fuzz_default, time
         print '\n'
     return log 
 
-def fuzz_with_dictionary(f, i, inputs, dictionary_path, output, fuzz_default, timeout):
+def fuzz_with_dictionary(f, i, dictionary_path, output, fuzz_default, timeout):
     log = ''
     files = os.listdir(dictionary_path)
     for dictionary in files:
@@ -134,7 +141,7 @@ def fuzz_with_dictionary(f, i, inputs, dictionary_path, output, fuzz_default, ti
         if not os.path.exists(dict_res_path):
             os.makedirs(dict_res_path)
         dict_name = '{0}/'.format(dict_path.split('/')[-1]) 
-        new_log = fuzz(f, i, inputs, dict_path, dict_name, output, fuzz_default, timeout)
+        new_log = fuzz(f, i, dict_path, dict_name, output, fuzz_default, timeout)
         log = log + new_log
     return log
 
@@ -142,7 +149,7 @@ def handle_template(template, param, dictionary, output, fuzz_default, timeout):
     #Count Number of template inputs
     f = open(template, 'r').read()
     print '[+] Load template {0}'.format(template)
-    inputs = f.count('{}')
+    inputs = len(re.findall(MATCH_REGEX, f))
     print '[+] Template inputs: {0}'.format(inputs)
 
     if param > inputs:
@@ -155,10 +162,10 @@ def handle_template(template, param, dictionary, output, fuzz_default, timeout):
         if param < 0 or param - 1 == i:
             is_dictionary_folder = os.path.isdir(dictionary)
             if is_dictionary_folder:
-                new_line = fuzz_with_dictionary(f, i, inputs, dictionary, output, fuzz_default, timeout)
+                new_line = fuzz_with_dictionary(f, i, dictionary, output, fuzz_default, timeout)
                 log_file = log_file + new_line 
             else:
-                new_line = fuzz(f, i, inputs, dictionary, '', output, fuzz_default, timeout)
+                new_line = fuzz(f, i, dictionary, '', output, fuzz_default, timeout)
                 log_file = log_file + new_line 
         else:
             print '\n[*] Ignoring input {0}'.format(i+1),
