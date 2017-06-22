@@ -51,8 +51,12 @@ The following HTTP request is an example of a template:
     <?xml version=1.0 encoding=UTF-8?>
     <request>
        <sc_xml_ver>1.0</sc_xml_ver>
-       <ipAddress>{}</ipAddress>
+       <ipAddress>{{127.0.0.1}}</ipAddress>
+       <port>{{80}}</port>
     </request>
+
+The value between `{{` and `}}` will be the one used when this parameter is not being fuzzed.
+If there is no value, a default one will be used instead.
 
 You can fuzz it by running:
 
