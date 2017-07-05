@@ -3,7 +3,7 @@
 This is a python HTTP fuzzer implementation. 
 
 Simplefuzzer input is a HTTP template (raw request) and a dictionary.
-The HTTP parameters that need to be fuzzed are marked with `{}`
+The HTTP parameters that need to be fuzzed are marked with `{{}}`
 It sends HTTP requests for each input defined in the 
 raw HTTP and for each input in the dictionary.
 
