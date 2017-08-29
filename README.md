@@ -105,3 +105,6 @@ The resulting folder structure will be the following:
         │       └── paramN_dictionaryValueN_md5requesthash
         └── results.log
 
+## License
+
+  [LGPL3](LICENSE)
